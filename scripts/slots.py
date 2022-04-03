@@ -16,7 +16,7 @@ def start(cont):
 
     if always.positive:
         
-        icon.applyRotation([0,0,radians(group.get('rotation'))], True)
+        #icon.applyRotation([0,0,radians(group.get('rotation'))], True)
         print(icon)
         
      
@@ -34,8 +34,8 @@ def start(cont):
             icon.replaceMesh(obj['wepon']) 
             
             
-            
-               
+        else:
+            icon.visible = False
 
         if quant >= group['level']:
             obj['empt'] = 'livre'

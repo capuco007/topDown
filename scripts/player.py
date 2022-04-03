@@ -44,6 +44,7 @@ class Player(bge.types.KX_PythonComponent):
         GD['gunList'] = []
         GD['equiped'] = None
         self.scnL = bge.logic.getSceneList()
+        self.PlayMeshArm = self.object.childrenRecursive.get('PlayMeshArm')
     # Roda em todos os frames no jogo
     def onCollision(self,object):
         GD = bge.logic.globalDict
@@ -67,13 +68,17 @@ class Player(bge.types.KX_PythonComponent):
                     if not object.groupObject['gun'] in GD['gunColected']:
                         GD['gunColected'].append(object.groupObject['gun'])
                         GD['equiped'] = object.groupObject['gun']
+                        object.endObject()
                 else:
                     if GD['equiped']:
                         if not object['gun'] in GD['gunColected']:
+                            self.scene.addObject()
                             if str(GD['equiped']) in  GD['gunColected']:
                                 GD['gunColected'].remove(GD['equiped'])
                                 GD['gunColected'].append(object['gun'])
                                 GD['equiped'] = object['gun']
+                                object.endObject(str(GD['equiped']),self.spw,0)
+                                
 
                 
         
@@ -134,6 +139,9 @@ class Player(bge.types.KX_PythonComponent):
 
                
     def update(self):
+        if  GD['equiped'] != None:
+            self.PlayMeshArm.visible = True
+            self.PlayMeshArm.replaceMesh(GD['equiped']) 
         if not 'hud_wepon' in self.scnL:
 
             self.tradeGun()
