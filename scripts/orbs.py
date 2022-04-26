@@ -15,9 +15,9 @@ def update(cont):
         if obj['pl']:
             track.object = obj['pl'][0]
             dis = obj.getDistanceTo(obj['pl'][0])
-            if dis <= 5:
+            if dis <= 10:
                 cont.activate(track)
-                obj.applyMovement([0,0.1,0], True)
+                obj.applyMovement([0,0.3,0], True)
 
     if 'orbsPorta' in group:
         if obj['pl']:
@@ -25,7 +25,7 @@ def update(cont):
             track.object = pl['objColision']
             dis = obj.getDistanceTo(pl['objColision'])
             cont.activate(track)
-            obj.applyMovement([0,0.1,0], True)
+            obj.applyMovement([0,0.3,0], True)
             if dis <= 2:
                 obj.endObject()
 

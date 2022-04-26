@@ -3,6 +3,7 @@ import bge
 from collections import OrderedDict
 from mathutils import Vector
 GD = bge.logic.globalDict
+import random
 class Player(bge.types.KX_PythonComponent):
     # Put your arguments here of the format ("key", default_value).
     # These values are exposed to the UI.
@@ -30,6 +31,8 @@ class Player(bge.types.KX_PythonComponent):
         # tempo de disparo
         self.timeShot = 0
         self.life = 100
+        self.hitDamage = None
+        self.timeDamage =0
        
         self.dorObject = None
         self.dorOpening = 0
@@ -45,9 +48,26 @@ class Player(bge.types.KX_PythonComponent):
         GD['equiped'] = None
         self.scnL = bge.logic.getSceneList()
         self.PlayMeshArm = self.object.childrenRecursive.get('PlayMeshArm')
+        self.timeDash = 0
+        self.energy = 100
+        self.decarga = 80
+        self.municao = 100
     # Roda em todos os frames no jogo
+
     def onCollision(self,object):
         GD = bge.logic.globalDict
+        if 'life' in object:
+            if self.life < 100:
+                self.life += random.randint(0,25)
+                object.endObject()
+        if 'municao' in object:
+            if self.municao < 300:
+                self.municao += random.randint(0,75)
+                object.endObject()
+
+        if 'espinho' in object:
+            self.hitDamage = object
+            self.life -= 1
 
         if 'ground' in object:
             self.object['LVL'] = object.groupObject['LVL']
@@ -56,7 +76,8 @@ class Player(bge.types.KX_PythonComponent):
 
         if 'bulet_enemy' in object:
             object.endObject()
-            self.life -= 1
+            if self.life >0:
+                self.life -= 1
 
         if 'orbes' in object and self.timeOrbs == 0:
              self.object['orbs'] += 1
@@ -72,43 +93,51 @@ class Player(bge.types.KX_PythonComponent):
                 else:
                     if GD['equiped']:
                         if not object['gun'] in GD['gunColected']:
-                            self.scene.addObject()
+                            #self.scene.addObject()
                             if str(GD['equiped']) in  GD['gunColected']:
                                 GD['gunColected'].remove(GD['equiped'])
                                 GD['gunColected'].append(object['gun'])
                                 GD['equiped'] = object['gun']
                                 object.endObject(str(GD['equiped']),self.spw,0)
-                                
-
-                
-        
+                                         
     def move(self):
-        
+        if self.timeDamage>0:
+            self.timeDamage -=1
         y = self.tc[bge.events.WKEY].active - self.tc[bge.events.SKEY].active
         x = self.tc[bge.events.DKEY].active - self.tc[bge.events.AKEY].active
+
+        if self.hitDamage and self.timeDamage == 0:
+            self.timeDamage = 10
+            dir = self.object.worldPosition - self.hitDamage.worldPosition
+            self.char.walkDirection =  Vector(dir *1).normalized()*self.speed
+           
+            dir = None
+        if self.timeDamage<3:
+            self.hitDamage = None
         
-        
-        self.char.walkDirection = Vector([x, y, 0]).normalized()*self.speed
+        if not self.hitDamage:
+     
+            self.char.walkDirection = Vector([x, y, 0]).normalized()*self.speed
      
     def shoot(self):
         
-        if  GD['equiped'] != None:
+        if  GD['equiped'] != None and self.municao >0:
             if self.ms[bge.events.LEFTMOUSE].active:
                 if 'pistola' in GD['equiped']:
                     if self.timeShot == 0:
-                        self.timeShot = 10
+                        self.timeShot = 20
                         self.scene.addObject('ball',self.spw, 100)
+                        self.municao -= 1
                 if 'metra' in GD['equiped']:
                     if self.timeShot == 0:
-                        self.timeShot = 1
+                        self.timeShot = 8
                         self.scene.addObject('ball',self.spw, 100)
+                        self.municao -= 1
                 else:
                     pass
                 
     def tradeGun(self):
         GD = bge.logic.globalDict
-
-
 
     def sceneGame(self):
         #bge.logic.addScene('hud_wepon',1)
@@ -137,16 +166,44 @@ class Player(bge.types.KX_PythonComponent):
                     bge.logic.sendMessage('deactiveFilter')
                     break
 
+    def dash(self):
+        
+       
+        if self.energy < 100:
+            self.energy += 1
+        
+        if self.timeDash == 0:
+            self.speed = 0.15
+            
+            if self.tc[bge.events.SPACEKEY].activated and  self.energy >= self.decarga:
+                self.timeDash = 5
+                
+        if self.timeDash == 5:
+            if self.energy >= self.decarga:
+                    self.energy -= self.decarga
+
+        if self.timeDash >0:
+            self.speed = 0.6
+            self.timeDash -= 1
                
     def update(self):
+        if self.municao > 300:
+            self.municao = 300
+        if self.life > 100:
+            self.life = 100
+        print(self.life)
         if  GD['equiped'] != None:
             self.PlayMeshArm.visible = True
             self.PlayMeshArm.replaceMesh(GD['equiped']) 
+        if GD['equiped'] == None:
+            self.PlayMeshArm.visible = False
+            self.PlayMeshArm.replaceMesh('macakinha') 
         if not 'hud_wepon' in self.scnL:
 
             self.tradeGun()
             self.move()
             self.shoot()
+            self.dash()
         else:
             self.char.walkDirection = Vector([0, 0, 0])
         self.sceneGame()
@@ -161,23 +218,31 @@ class Player(bge.types.KX_PythonComponent):
             self.timeShot -= 1
 
 def dors(cont):
-
+        
         obj = cont.owner
+        kb = bge.logic.keyboard.inputs
         colision = cont.sensors['Collision']
         scene = obj.scene
         player = scene.objects['player']
+        
         if player['time_spw']>0:
             player['time_spw'] -= 1
-
-        if colision.positive:
+       
+        if colision.positive :
             spw_pl = player.childrenRecursive.get('spw_p')
             dor = colision.hitObject
             group = dor.groupObject
            
-            if group['active'] == False:
-                if player['orbs'] >0 and player['time_spw'] ==0:
+            if group['active'] == False and kb[bge.events.EKEY].active and  player['orbs'] >0 :
+               
+                if player['time_spw'] ==0:
+                    if player['orbs'] >0:
+                        player['orbs'] -= 1
                     scene.addObject('orbs_group_port',spw_pl, 0)
-                    player['time_spw'] = 30
+                    player['time_spw'] = 20
+                    if group['orbs'] >0:
+                        print(group['orbs'],player['orbs'])
+                        group['orbs'] -= 1
 
 
                 if  group['timeInject'] >0:
@@ -186,12 +251,9 @@ def dors(cont):
 
                 if group['orbs'] <= player['orbs'] and group['timeInject'] == 0:
                     
-                    if group['orbs'] >0:
-                        print(group['orbs'],player['orbs'])
-                        group['orbs'] -= 1
-                    if player['orbs'] >0:
-                        player['orbs'] -= 1
-                    group['timeInject'] = 50
+                   
+                    
+                    group['timeInject'] = 20
 
                     if group['orbs'] == 0:
                         if group['active'] == False:
